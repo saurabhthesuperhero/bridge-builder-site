@@ -1,0 +1,84 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><link rel="stylesheet" href="../style.css"><title>Bridge challenge - Plankbury</title>
+<meta property="og:title" content="Can you beat my bridge?"><meta property="og:description" content="A Plankbury: Bridge Builder challenge. Build it cheaper and send it back."><meta property="og:image" content="https://saurabhthesuperhero.github.io/bridge-builder-site/icon.png">
+<style>
+.open{display:block;text-align:center;background:var(--honey);color:#2B2A33;font-weight:800;font-size:20px;text-decoration:none;padding:14px 18px;border-radius:16px;box-shadow:0 4px 0 var(--deep);margin:18px 0 8px}
+.open:active{transform:translateY(3px);box-shadow:0 1px 0 var(--deep)}
+.code{display:flex;gap:8px;align-items:stretch;margin-top:8px}
+.code code{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px;line-height:1.35;background:var(--paper);border:1px solid var(--soft);border-radius:12px;padding:8px 10px;max-height:96px;overflow:auto}
+.code button{border:0;border-radius:12px;background:var(--teal);color:#FFF9EF;font-weight:800;font-size:15px;padding:0 16px;cursor:pointer;min-height:48px}
+.big{font-size:34px;font-weight:800;color:var(--deep);margin:4px 0 0}
+.muted{color:var(--soft);font-size:14px}
+</style></head><body><main><header><img src="../icon.png" alt=""><div><h1>Plankbury: Bridge Builder</h1><small>by Saikaizen Innovations</small></div></header><nav><a href="../index.html">Home</a><a href="../privacy.html">Privacy</a><a href="../terms.html">Terms</a><a href="../support.html">Support</a></nav>
+<div class="card" id="card">
+<h2 id="title" style="margin-top:0">A bridge challenge for you</h2>
+<p id="who">A friend built a bridge in Plankbury and wants to see if you can build it cheaper.</p>
+<p class="big" id="cost" hidden></p>
+<a class="open" id="open" href="https://play.google.com/store/apps/details?id=com.saikaizen.bridgebuilder">Open in Plankbury</a>
+<p class="muted" id="hint">No Plankbury yet? The button takes you to Google Play. Your phone replays the bridge itself, so the numbers are real.</p>
+<div id="codebox" hidden>
+<p class="muted" style="margin:14px 0 0">Or copy the code and paste it in Plankbury: Home, then the envelope button.</p>
+<div class="code"><code id="code"></code><button id="copy" type="button">Copy</button></div>
+</div>
+</div>
+<p class="muted" style="text-align:center"><a href="https://play.google.com/store/apps/details?id=com.saikaizen.bridgebuilder">Get Plankbury on Google Play</a></p>
+</main>
+<script>
+(function(){
+  var PLAY='https://play.google.com/store/apps/details?id=com.saikaizen.bridgebuilder';
+  var raw=(location.hash||'').replace(/^#/,'');
+  var m=raw.match(/PB[A-Za-z0-9_-]{6,}/);
+  if(!m){
+    document.getElementById('title').textContent='Plankbury bridge challenges';
+    document.getElementById('who').textContent='This link has no challenge code in it. Ask your friend to send it again from the game.';
+    document.getElementById('open').textContent='Get Plankbury';
+    return;
+  }
+  var code=m[0];
+  var android=/Android/i.test(navigator.userAgent);
+  var open=document.getElementById('open');
+  if(android){
+    open.href='intent://c/'+code+'#Intent;scheme=plankbury;package=com.saikaizen.bridgebuilder;S.browser_fallback_url='+encodeURIComponent(PLAY)+';end';
+  }else{
+    open.textContent='Get Plankbury on Google Play';
+    document.getElementById('hint').textContent='Plankbury is an Android game. Open this link on your Android phone to play the challenge.';
+  }
+  document.getElementById('code').textContent=code;
+  document.getElementById('codebox').hidden=false;
+  document.getElementById('copy').onclick=function(){
+    var b=this;
+    function done(){b.textContent='Copied';setTimeout(function(){b.textContent='Copy';},1800);}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(code).then(done,fallback);}else{fallback();}
+    function fallback(){var r=document.createRange();r.selectNodeContents(document.getElementById('code'));var s=getSelection();s.removeAllRanges();s.addRange(r);try{document.execCommand('copy');done();}catch(e){}}
+  };
+  // Best effort: read the friend's name, level and cost from the code
+  // (same format as lib/social/challenge_code.dart). Any failure keeps the
+  // generic text.
+  try{
+    var b64=code.slice(2).replace(/-/g,'+').replace(/_/g,'/');
+    while(b64.length%4)b64+='=';
+    var bin=atob(b64),bytes=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+    var head=bytes[0];
+    if((head&15)!==1||(head&16))return;
+    var body=bytes.subarray(1,bytes.length-4);
+    var inflate=(head&32)?(typeof DecompressionStream==='function'?new Response(new Blob([body]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer().then(function(a){return new Uint8Array(a);}):null):Promise.resolve(body);
+    if(!inflate)return;
+    inflate.then(function(u){
+      var p=0;
+      function v(){var x=0,s=0,c;do{c=u[p++];x+=(c&127)*Math.pow(2,s);s+=7;}while(c>=128&&p<u.length);return x;}
+      function str(){var n=v(),t=new TextDecoder().decode(u.subarray(p,p+n));p+=n;return t;}
+      v();var level=str(),cost=v();v();var name=str();
+      var who=(name||'A friend').replace(/[<>&]/g,'');
+      var lv=level.match(/^w(\d+)-0?(\d+)$/);
+      var where=lv?'level '+lv[1]+'-'+lv[2]:'a level';
+      document.getElementById('title').textContent=who+' challenges you';
+      document.getElementById('who').textContent=who+' built a bridge on '+where+' in Plankbury. Can you build one that holds for less?';
+      var c=document.getElementById('cost');
+      c.textContent='Beat $'+cost.toLocaleString('en-US');
+      c.hidden=false;
+      document.title=who+' challenges you - Plankbury';
+    }).catch(function(){});
+  }catch(e){}
+})();
+</script>
+</body></html>
